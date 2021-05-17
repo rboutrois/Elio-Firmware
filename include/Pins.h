@@ -14,7 +14,7 @@
 #define pinINB2 13 //#define enableMotorB 13
 
 // IR
-#define osbtacleCmdPin 21
+#define osbtacleCmdPin 32
 
 // Line
 #define lineCmdPin 33

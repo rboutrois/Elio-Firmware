@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_NeoPixel.h>
+#include <SparkFun_ADS1015_Arduino_Library.h>
 
 #include "Pins.h"
 #include "MotorDriver.h"
@@ -20,6 +21,15 @@ int buttonState = 0;
 // Interrupt du bouton placée dans la RAM
 void IRAM_ATTR buttonpressed();
 
+// Obstacle
+int sensorValue[3];
+int obstacleCount = 4;
+ADS1015 obstacleSensor;
+
+// Line
+int lineCount = 4;
+ADS1015 lineSensor;
+
 void setup()
 {
   Wire.begin();
@@ -33,6 +43,29 @@ void setup()
   // Bouton init
   pinMode(buttonPin, INPUT);
   attachInterrupt(buttonPin, buttonpressed, FALLING);
+
+  // Osbtacle init
+  if (obstacleSensor.begin(0x48) == false)
+  {
+    Serial.println("Osbtacle sensor not found. Check wiring.");
+    while (1)
+      ;
+  }
+  obstacleSensor.setGain(ADS1015_CONFIG_PGA_16);
+  pinMode(osbtacleCmdPin, OUTPUT);
+  digitalWrite(osbtacleCmdPin, HIGH);
+
+  // Line init
+  if (lineSensor.begin(0x49) == false)
+  {
+    Serial.println("Line sensor not found. Check wiring.");
+    while (1)
+      ;
+  }
+  pinMode(lineCmdPin, OUTPUT);
+  digitalWrite(lineCmdPin, HIGH);
+
+  Serial.println("\nElio started !\n");
 }
 
 void loop()
@@ -41,7 +74,7 @@ void loop()
   switch (buttonState)
   {
   case 0:
-    pixels.setPixelColor(0, pixels.Color(100, 0, 0));
+    pixels.setPixelColor(0, pixels.Color(10, 10, 10));
 
     motorA.stop();
     motorB.stop();
@@ -49,15 +82,36 @@ void loop()
     break;
 
   case 1:
-    pixels.setPixelColor(0, pixels.Color(0, 100, 0));
+    if (obstacleSensor.getSingleEnded(0) < 5)
+    {
+      pixels.setPixelColor(0, pixels.Color(0, 10, 0));
 
-    motorA.forward();
-    motorB.forward();
+      motorA.forward();
+      motorB.forward();
+    }
+    else if (obstacleSensor.getSingleEnded(0) < 15)
+    {
+      pixels.setPixelColor(0, pixels.Color(10, 0, 10));
+      pixels.show();
+
+      motorA.forward();
+      motorB.backward();
+      delay(100);
+    }
+    else
+    {
+      pixels.setPixelColor(0, pixels.Color(10, 0, 10));
+      pixels.show();
+
+      motorA.backward();
+      motorB.forward();
+      delay(100);
+    }
 
     break;
 
   case 2:
-    pixels.setPixelColor(0, pixels.Color(0, 0, 100));
+    pixels.setPixelColor(0, pixels.Color(0, 0, 10));
 
     motorA.backward();
     motorB.backward();
@@ -71,7 +125,7 @@ void loop()
 
   pixels.show();
 
-  delay(10);
+  delay(100);
 }
 
 void IRAM_ATTR buttonpressed()
